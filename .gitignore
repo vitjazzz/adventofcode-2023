@@ -1,0 +1,54 @@
+# Compiled Go binaries
+*.exe
+*.dll
+*.exe~
+*.dll~
+*.exe.bak
+*.dll.bak
+
+# Compiled Java binaries
+*.class
+*.jar
+
+# Compiled Python files
+*.pyc
+__pycache__/
+
+# Compiled Kotlin binaries
+*.kotlin_built
+*.kotlin_module
+
+# Compiled Ruby binaries
+*.gem
+
+# Compiled Swift files
+*.swiftdoc
+*.swiftmodule
+*.swiftpm
+
+# IntelliJ IDEA directories
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text directories
+.sublime-project
+.sublime-workspace
+
+# Eclipse directories
+.classpath
+.project
+.settings/
+
+# Visual Studio Code directories
+.vscode/
+
+# Logs and databases
+*.log
+*.sqlite
+*.sqlite3
+
+# OS-specific files
+.DS_Store
+Thumbs.db
