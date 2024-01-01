@@ -1,6 +1,7 @@
-package main
+package day1
 
 import (
+	"adventofcode-2023/adventutils"
 	"fmt"
 	"strconv"
 	"strings"
@@ -9,8 +10,8 @@ import (
 
 var digitMappings = map[string]int{"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
 
-func main() {
-	taskLines := getFromUrl("https://adventofcode.com/2023/day/1/input")
+func Run() {
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/1/input")
 	//taskLines := getTestLinesAdvanced()
 	var desiredSum int
 	for _, line := range taskLines {
