@@ -17,25 +17,14 @@ func Run() {
 }
 
 func calculateGearsSum(taskArray [][]rune) int {
+	numbersArray := computeNumbersArray(taskArray)
+	totalSum := calculateSum(taskArray, numbersArray)
+
+	return totalSum
+}
+
+func calculateSum(taskArray [][]rune, numbersArray [][]int) int {
 	totalSum := 0
-	numbersArray := make([][]int, len(taskArray))
-	for i, line := range taskArray {
-		numbersArray[i] = make([]int, len(line))
-		currentNumberStr := ""
-		for j, char := range line {
-			if !unicode.IsDigit(char) {
-				continue
-			}
-			currentNumberStr += string(char)
-			if currentNumberStr != "" && isEndOfNumber(j, line) {
-				currentNumber, _ := strconv.Atoi(currentNumberStr)
-				for jTmp := j + 1 - len(currentNumberStr); jTmp <= j; jTmp++ {
-					numbersArray[i][jTmp] = currentNumber
-				}
-				currentNumberStr = ""
-			}
-		}
-	}
 	for i, line := range taskArray {
 		for j, char := range line {
 			if char != '*' {
@@ -58,13 +47,13 @@ func calculateGearsSum(taskArray [][]rune) int {
 			}
 		}
 	}
-
 	return totalSum
 }
 
-func calculateAdjacentNumbers(taskArray [][]rune) int {
-	totalSum := 0
+func computeNumbersArray(taskArray [][]rune) [][]int {
+	numbersArray := make([][]int, len(taskArray))
 	for i, line := range taskArray {
+		numbersArray[i] = make([]int, len(line))
 		currentNumberStr := ""
 		for j, char := range line {
 			if !unicode.IsDigit(char) {
@@ -73,36 +62,18 @@ func calculateAdjacentNumbers(taskArray [][]rune) int {
 			currentNumberStr += string(char)
 			if currentNumberStr != "" && isEndOfNumber(j, line) {
 				currentNumber, _ := strconv.Atoi(currentNumberStr)
-				if isAdjacentToSymbol(i, j, len(taskArray), len(line), currentNumberStr, taskArray) {
-					totalSum += currentNumber
-				} else {
-					fmt.Printf("Ignoring number %d\n", currentNumber)
-
+				for jTmp := j + 1 - len(currentNumberStr); jTmp <= j; jTmp++ {
+					numbersArray[i][jTmp] = currentNumber
 				}
 				currentNumberStr = ""
 			}
 		}
 	}
-	return totalSum
-}
-
-func isAdjacentToSymbol(i, j, iMax, jMax int, currentNumberStr string, taskArray [][]rune) bool {
-	for iTmp := adventutils.Max(0, i-1); iTmp <= adventutils.Min(iMax-1, i+1); iTmp++ {
-		for jTmp := adventutils.Max(0, j-len(currentNumberStr)); jTmp <= adventutils.Min(jMax-1, j+1); jTmp++ {
-			if isSpecialSymbol(taskArray[iTmp][jTmp]) {
-				return true
-			}
-		}
-	}
-	return false
+	return numbersArray
 }
 
 func isEndOfNumber(j int, line []rune) bool {
 	return j+1 >= len(line) || !unicode.IsDigit(line[j+1])
-}
-
-func isSpecialSymbol(char rune) bool {
-	return !unicode.IsDigit(char) && char != '.'
 }
 
 func toArray(lines []string) [][]rune {
