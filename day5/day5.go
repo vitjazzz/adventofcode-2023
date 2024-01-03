@@ -10,62 +10,137 @@ import (
 const seedsKey = "seeds: "
 const mapKey = " map:"
 
-var mappingOrder = []string{"seed", "soil", "fertilizer", "water", "light", "temperature", "humidity", "location"}
-
 func Run() {
 	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/5/input")
 	//taskLines := getTestLines()
-	seeds := getSeeds(taskLines)
+	seedsRanges := getSeedsAdvanced(taskLines)
+	maxSeed := findMaxSeed(seedsRanges)
 	allMappingRules := getMappingRules(taskLines)
-	//fmt.Printf("seeds - %v, allMappingRules - %v\n", seeds, allMappingRules)
-	locations := calculateLocations(seeds, allMappingRules)
-	closestLocation := math.MaxInt
-	for _, location := range locations {
-		if closestLocation > location {
-			closestLocation = location
+	allTransitiveRules := calculateTransitiveRules(rangeStruct{0, maxSeed}, "seed", allMappingRules)
+	//closestLocation := calculateClosestLocation(seedsRanges, allMappingRules)
+	closestLocation := calculateClosestDestination(seedsRanges, allTransitiveRules)
+	fmt.Printf("closestLocation - %d\n", closestLocation)
+}
+
+func calculateClosestDestination(sourceRanges []rangeStruct, allRules []mappingRule) int {
+	closestDestination := math.MaxInt
+	for _, sourceRange := range sourceRanges {
+		for _, rule := range allRules {
+			if (sourceRange.end() <= rule.sourceStart) || sourceRange.start >= rule.sourceEnd() {
+				continue
+			}
+			diff := sourceRange.start - rule.sourceStart
+			diff = adventutils.Max(0, diff)
+			destination := rule.destinationStart + diff
+			if closestDestination > destination {
+				closestDestination = destination
+			}
 		}
 	}
-	fmt.Printf("Closest location - %d\n", closestLocation)
+	return closestDestination
 }
 
-func calculateLocations(seeds []int, rules []mappingRules) (locations []int) {
-	for _, seed := range seeds {
-		locations = append(locations, calculateLocation(seed, rules))
+func findMaxSeed(seedsRanges []rangeStruct) int {
+	maxNumber := 0
+	for _, seedRange := range seedsRanges {
+		seedRangeEnd := seedRange.start + seedRange.rangeSize
+		if maxNumber < seedRangeEnd {
+			maxNumber = seedRangeEnd
+		}
 	}
-	return locations
+	return maxNumber
 }
 
-func calculateLocation(seed int, rules []mappingRules) int {
-	currentSource := 0
-	currentDestination := seed
-	for i := 0; i < len(mappingOrder)-1; i++ {
-		currentSource = currentDestination
-		from := mappingOrder[i]
-		to := mappingOrder[i+1]
-		rule := getMappingRule(from, to, rules)
-		currentDestination = rule.Map(currentSource)
+func calculateTransitiveRules(currentRange rangeStruct, source string, allMappingRules []mappingRules) []mappingRule {
+	if source == "location" {
+		return []mappingRule{{currentRange.start, currentRange.start, currentRange.rangeSize}}
 	}
-	return currentDestination
+	currentRules := getMappingRule(source, allMappingRules)
+	rulesInRange := getRulesInRange(currentRange, currentRules)
+	//fmt.Printf("Source - %s, Rules in range - %v\n", source, rulesInRange)
+	var res []mappingRule
+	for _, sourceRule := range rulesInRange {
+		destinationRules := calculateTransitiveRules(
+			rangeStruct{sourceRule.destinationStart, sourceRule.mappingRange},
+			currentRules.destination,
+			allMappingRules)
+		diff := sourceRule.sourceStart - sourceRule.destinationStart
+		for _, destinationRule := range destinationRules {
+			sourceStart := destinationRule.sourceStart + diff
+			transitiveRule := mappingRule{sourceStart, destinationRule.destinationStart, destinationRule.mappingRange}
+			res = append(res, transitiveRule)
+		}
+	}
+	return res
 }
 
-func getMappingRule(source, destination string, rules []mappingRules) mappingRules {
+func getRulesInRange(currentRange rangeStruct, rules mappingRules) (newRules []mappingRule) {
+	rangeEnd := currentRange.start + currentRange.rangeSize
+	for currentSourceStart := currentRange.start; currentSourceStart < rangeEnd; {
+		nextRule := findNextRule(currentSourceStart, rules)
+		nextRule.mappingRange = adventutils.Min(rangeEnd-nextRule.sourceStart, nextRule.mappingRange)
+		newRules = append(newRules, nextRule)
+		currentSourceStart += nextRule.mappingRange
+	}
+	return newRules
+}
+
+func findNextRule(sourceStart int, rules mappingRules) mappingRule {
+	closestRuleStart := math.MaxInt
+	for _, rule := range rules.rules {
+		if sourceStart >= rule.sourceStart && sourceStart < rule.sourceEnd() {
+			diff := sourceStart - rule.sourceStart
+			return mappingRule{
+				sourceStart:      sourceStart,
+				destinationStart: rule.destinationStart + diff,
+				mappingRange:     rule.mappingRange - diff,
+			}
+		}
+		if rule.sourceStart > sourceStart && rule.sourceStart < closestRuleStart {
+			closestRuleStart = rule.sourceStart
+		}
+	}
+	mappingRange := closestRuleStart - sourceStart
+	return mappingRule{sourceStart, sourceStart, mappingRange}
+}
+
+func getMappingRule(source string, rules []mappingRules) mappingRules {
 	for _, rule := range rules {
-		if rule.source == source && rule.destination == destination {
+		if rule.source == source {
 			return rule
 		}
 	}
-	fmt.Printf("Failed to find rule for %s source and %s destination!!!\n", source, destination)
+	fmt.Printf("Failed to find rule for %s source!!!\n", source)
 	return mappingRules{}
 }
 
-func getSeeds(lines []string) []int {
+func getSeedsRanges(lines []string) (seedsRanges []rangeStruct) {
 	for _, line := range lines {
-		if strings.Contains(line, seedsKey) {
-			seedsStr := line[len(seedsKey):]
-			return adventutils.ParseNumbers(seedsStr, " ")
+		if !strings.Contains(line, seedsKey) {
+			continue
+		}
+		seedsStr := line[len(seedsKey):]
+		seeds := adventutils.ParseNumbers(seedsStr, " ")
+		for _, seed := range seeds {
+			seedsRanges = append(seedsRanges, rangeStruct{start: seed, rangeSize: 1})
 		}
 	}
-	return []int{}
+	return seedsRanges
+}
+
+func getSeedsAdvanced(lines []string) (seedsRanges []rangeStruct) {
+	for _, line := range lines {
+		if !strings.Contains(line, seedsKey) {
+			continue
+		}
+		seedsStr := line[len(seedsKey):]
+		seeds := adventutils.ParseNumbers(seedsStr, " ")
+		for i := 0; i < len(seeds); i += 2 {
+			seedsRanges = append(seedsRanges, rangeStruct{start: seeds[i], rangeSize: seeds[i+1]})
+
+		}
+	}
+	return seedsRanges
 }
 
 func getMappingRules(lines []string) (allMappingRules []mappingRules) {
@@ -92,6 +167,9 @@ func getMappingRules(lines []string) (allMappingRules []mappingRules) {
 	return allMappingRules
 }
 
+type rangeStruct struct {
+	start, rangeSize int
+}
 type mappingRules struct {
 	source, destination string
 	rules               []mappingRule
@@ -107,12 +185,18 @@ type Mapper interface {
 
 func (mp mappingRules) Map(source int) (destination int) {
 	for _, rule := range mp.rules {
-		if source >= rule.sourceStart && source < rule.sourceStart+rule.mappingRange {
+		if source >= rule.sourceStart && source < rule.sourceEnd() {
 			diff := source - rule.sourceStart
 			return rule.destinationStart + diff
 		}
 	}
 	return source
+}
+func (rs rangeStruct) end() int {
+	return rs.start + rs.rangeSize
+}
+func (mp mappingRule) sourceEnd() int {
+	return mp.sourceStart + mp.mappingRange
 }
 
 func getTestLines() (taskLines []string) {
