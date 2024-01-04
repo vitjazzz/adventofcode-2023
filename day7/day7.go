@@ -1,6 +1,7 @@
 package day7
 
 import (
+	"adventofcode-2023/adventutils"
 	"fmt"
 	"math"
 	"slices"
@@ -9,11 +10,11 @@ import (
 	"strings"
 )
 
-var cardNominations = map[string]int{"A": 12, "K": 11, "Q": 10, "J": 9, "T": 8, "9": 7, "8": 6, "7": 5, "6": 4, "5": 3, "4": 2, "3": 1, "2": 0}
+var cardNominations = map[string]int{"A": 12, "K": 11, "Q": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1, "J": 0}
 
 func Run() {
-	//taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/7/input")
-	taskLines := getTestLines()
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/7/input")
+	//taskLines := getTestLines()
 	hands := getHands(taskLines)
 	sortedHands := hands[:]
 	sort.Slice(sortedHands, func(i, j int) bool {
@@ -53,10 +54,17 @@ func getPower(cards string) int {
 }
 
 func getCombination(cards string) (name string, rank int) {
+	cardsArray := strings.Split(cards, "")
 	uniqueCardsMap := make(map[string]int)
-	for _, card := range strings.Split(cards, "") {
-		uniqueCardsMap[card]++
+	jokers := 0
+	for _, card := range cardsArray {
+		if card == "J" {
+			jokers++
+		} else {
+			uniqueCardsMap[card]++
+		}
 	}
+	uniqueCardsMap = useJokers(cardsArray, uniqueCardsMap, jokers)
 	uniqueCards := len(uniqueCardsMap)
 	if uniqueCards == 1 {
 		return "five of a kind", 6
@@ -73,6 +81,17 @@ func getCombination(cards string) (name string, rank int) {
 	} else {
 		return "high card", 0
 	}
+}
+
+func useJokers(cardsArray []string, uniqueCardsMap map[string]int, jokers int) map[string]int {
+	cardToDuplicate := cardsArray[0]
+	for card, count := range uniqueCardsMap {
+		if uniqueCardsMap[cardToDuplicate] < count {
+			cardToDuplicate = card
+		}
+	}
+	uniqueCardsMap[cardToDuplicate] += jokers
+	return uniqueCardsMap
 }
 
 func getCardStrength(cards string) int {
