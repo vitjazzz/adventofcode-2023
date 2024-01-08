@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-	"time"
 )
 
 func Run() {
@@ -20,100 +19,134 @@ func Run() {
 
 func findStepsAdvanced(tree map[string]*Node, navigationRules string) int {
 	nodesTransitions := buildNodesTransitions(tree, navigationRules)
-	steps := 0
-	currentNodes := getStartingNodes(tree)
-	var iterations int64
-	var totalTimeSpent int64
-	for ; ; steps += len(navigationRules) {
-		iterationStartTime := time.Now()
-		finalNodesIndexes := makeRange(0, len(navigationRules)-1)
-		for _, node := range currentNodes {
-			nodeTransitions := nodesTransitions[node.name]
-			var newFinalNodesIndexes []int
-			for _, finalNodeIndex := range nodeTransitions.finalNodesIndexes {
-				if slices.Contains(finalNodesIndexes, finalNodeIndex) {
-					newFinalNodesIndexes = append(newFinalNodesIndexes, finalNodeIndex)
-				}
-			}
-			finalNodesIndexes = newFinalNodesIndexes
-			if len(finalNodesIndexes) == 0 {
-				break
-			}
-		}
-		if len(finalNodesIndexes) > 0 {
-			return steps + (finalNodesIndexes[0] + 1)
-		}
-		var newCurrentNodes []*Node
-		for _, node := range currentNodes {
-			nodeTransitions := nodesTransitions[node.name]
-			newCurrentNode := nodeTransitions.transitionsTo[len(navigationRules)-1]
-			newCurrentNodes = append(newCurrentNodes, newCurrentNode)
-		}
-		currentNodes = newCurrentNodes
-		iterationEndTime := time.Now()
-		iterationTime := iterationEndTime.Sub(iterationStartTime)
-		totalTimeSpent += iterationTime.Nanoseconds()
-		iterations++
-		if iterations%100_000 == 0 {
-			fmt.Printf("Avg ms for iteration - %d, current iteration - %v\n", totalTimeSpent/iterations, iterationTime)
-		}
+	loopsMap := calculateLoops(nodesTransitions, navigationRules)
+
+	// turns out I don't need it
+	//calculatePossibleCombinations(loopsMap, nodesTransitions)
+
+	var loopsSizes []int
+	for _, loop := range loopsMap {
+		loopsSizes = append(loopsSizes, len(loop.nodeNames)-1)
 	}
+	// Less common multiple
+	currentLcm := LCM(loopsSizes)
+
+	return currentLcm * len(navigationRules)
 }
 
-func makeRange(min, max int) []int {
-	a := make([]int, max-min+1)
-	for i := range a {
-		a[i] = min + i
+func calculateLoops(nodesTransitions map[string]*NodeTransitions, navigationRules string) map[int]Loop {
+	loopsMap := make(map[int]Loop)
+	currentNodesTransitions := getStartingNodesTransitions(nodesTransitions)
+	for !areLoopsCompleted(loopsMap) {
+		var newNodesTransitions []*NodeTransitions
+		for i, nodeTransitions := range currentNodesTransitions {
+			loop := loopsMap[i]
+			if !slices.Contains(loop.nodeNames, nodeTransitions.name) {
+				loop.nodeNames = append(loop.nodeNames, nodeTransitions.name)
+				loopsMap[i] = loop
+			} else {
+				loop.completed = true
+				loopsMap[i] = loop
+			}
+			newCurrentNodeTransition := nodeTransitions.transitionsTo[len(navigationRules)-1]
+			newNodesTransitions = append(newNodesTransitions, newCurrentNodeTransition)
+		}
+		currentNodesTransitions = newNodesTransitions
+	}
+	return loopsMap
+}
+
+func calculatePossibleCombinations(loopsMap map[int]Loop, nodesTransitions map[string]*NodeTransitions) []Combination {
+	var possibleCombinations []Combination
+	for i := 0; i < len(loopsMap); i++ {
+		var newPossibleCombinations []Combination
+		loopNodeNames := loopsMap[i].nodeNames[1:]
+		for _, loopNodeName := range loopNodeNames {
+			if i == 0 {
+				newPossibleCombinations = append(newPossibleCombinations, Combination{[]string{loopNodeName}})
+				continue
+			}
+			for _, possibleCombination := range possibleCombinations {
+				successfulIntersection := true
+				for _, name := range possibleCombination.groupedNames {
+					if !findIntersection(nodesTransitions[loopNodeName], nodesTransitions[name]) {
+						successfulIntersection = false
+					}
+				}
+				if successfulIntersection {
+					newPossibleCombination := possibleCombination
+					newPossibleCombination.groupedNames = append(newPossibleCombination.groupedNames, loopNodeName)
+					newPossibleCombinations = append(newPossibleCombinations, newPossibleCombination)
+				}
+			}
+		}
+		possibleCombinations = newPossibleCombinations
+	}
+	var uniquePossibleCombinations []Combination
+	var uniqueCombinationNames []string
+	for _, combination := range possibleCombinations {
+		groupedName := ""
+		for _, name := range combination.groupedNames {
+			groupedName += name
+		}
+		if !slices.Contains(uniqueCombinationNames, groupedName) {
+			uniqueCombinationNames = append(uniqueCombinationNames, groupedName)
+			uniquePossibleCombinations = append(uniquePossibleCombinations, combination)
+		}
+	}
+	return uniquePossibleCombinations
+}
+
+func LCM(loopsSizes []int) int {
+	currentGcd := gcd(loopsSizes[0], loopsSizes[1])
+	for _, loopSize := range loopsSizes {
+		currentGcd = gcd(currentGcd, loopSize)
+	}
+
+	currentLcm := 1
+	for _, loopSize := range loopsSizes {
+		currentLcm *= loopSize
+	}
+	currentLcm = currentLcm / currentGcd
+	return currentLcm
+}
+
+func findIntersection(a, b *NodeTransitions) bool {
+	for _, index := range a.finalNodesIndexes {
+		if slices.Contains(b.finalNodesIndexes, index) {
+			return true
+		}
+	}
+	return false
+}
+
+func gcd(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
 	}
 	return a
 }
 
-func findStepsAdvancedSlowVersion(tree map[string]*Node, navigationRules string) int {
-	steps := 0
-	startingNodes := getStartingNodes(tree)
-	currentNodes := startingNodes
-	finishedNodes := 0
-	for ; finishedNodes != len(startingNodes); steps++ {
-		finishedNodes = 0
-		var newCurrentNodes []*Node
-		navigationRule := navigationRules[steps%len(navigationRules)]
-		for _, node := range currentNodes {
-			var newNode *Node
-			if navigationRule == 'R' {
-				newNode = node.right
-			} else {
-				newNode = node.left
-			}
-			if newNode.name[2] == 'Z' {
-				finishedNodes++
-			}
-			newCurrentNodes = append(newCurrentNodes, newNode)
-		}
-		currentNodes = newCurrentNodes
+func areLoopsCompleted(loops map[int]Loop) bool {
+	if len(loops) == 0 {
+		return false
 	}
-	return steps
+	for _, loop := range loops {
+		if !loop.completed {
+			return false
+		}
+	}
+	return true
 }
-
-func getStartingNodes(tree map[string]*Node) (res []*Node) {
-	for key, node := range tree {
+func getStartingNodesTransitions(nodesTransitions map[string]*NodeTransitions) (res []*NodeTransitions) {
+	for key, node := range nodesTransitions {
 		if key[2] == 'A' {
 			res = append(res, node)
 		}
 	}
 	return
-}
-
-func findSteps(tree map[string]*Node, navigationRules string) int {
-	steps := 0
-	for currentNode := tree["AAA"]; currentNode.name != "ZZZ"; steps++ {
-		navigationRule := navigationRules[steps%len(navigationRules)]
-		if navigationRule == 'R' {
-			currentNode = currentNode.right
-		} else {
-			currentNode = currentNode.left
-		}
-	}
-	return steps
 }
 
 func buildTree(nodesReps []NodeRepresentation) map[string]*Node {
@@ -127,24 +160,28 @@ func buildTree(nodesReps []NodeRepresentation) map[string]*Node {
 	return res
 }
 
-func buildNodesTransitions(tree map[string]*Node, navigationRules string) map[string]NodeTransitions {
-	res := make(map[string]NodeTransitions)
+func buildNodesTransitions(tree map[string]*Node, navigationRules string) map[string]*NodeTransitions {
+	res := make(map[string]*NodeTransitions)
+	for _, node := range tree {
+		res[node.name] = &NodeTransitions{name: node.name}
+	}
 	for _, node := range tree {
 		currentNode := node
 		var finalNodesIndexes []int
-		var transitionsTo []*Node
+		var transitionsTo []*NodeTransitions
 		for i, navigationRule := range navigationRules {
 			if navigationRule == 'R' {
 				currentNode = currentNode.right
 			} else {
 				currentNode = currentNode.left
 			}
-			transitionsTo = append(transitionsTo, currentNode)
+			transitionsTo = append(transitionsTo, res[currentNode.name])
 			if currentNode.name[2] == 'Z' {
 				finalNodesIndexes = append(finalNodesIndexes, i)
 			}
 		}
-		res[node.name] = NodeTransitions{node.name, finalNodesIndexes, transitionsTo}
+		res[node.name].finalNodesIndexes = finalNodesIndexes
+		res[node.name].transitionsTo = transitionsTo
 	}
 	return res
 }
@@ -182,10 +219,19 @@ type Node struct {
 	left, right *Node
 }
 
+type Loop struct {
+	completed bool
+	nodeNames []string
+}
+
 type NodeTransitions struct {
 	name              string
 	finalNodesIndexes []int
-	transitionsTo     []*Node
+	transitionsTo     []*NodeTransitions
+}
+
+type Combination struct {
+	groupedNames []string
 }
 
 func getTestLines() (taskLines []string) {
