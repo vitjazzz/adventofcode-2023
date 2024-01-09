@@ -204,34 +204,6 @@ type Point struct {
 	i, j int
 }
 
-func (node Node) isOpeningNode() bool {
-	if node.first.i == -1 || node.second.i == -1 {
-		return false
-	}
-	if node.first.i == node.second.i {
-		return false
-	}
-	currentJ := node.coordinate.j
-	if node.first.j > currentJ || node.second.j > currentJ || node.first.j == node.second.j {
-		return true
-	}
-	return false
-}
-
-func (node Node) isClosingNode() bool {
-	if node.first.i == -1 || node.second.i == -1 {
-		return false
-	}
-	if node.first.i == node.second.i {
-		return false
-	}
-	currentJ := node.coordinate.j
-	if node.first.j < currentJ || node.second.j < currentJ || node.first.j == node.second.j {
-		return true
-	}
-	return false
-}
-
 func (node Node) isVertical() bool {
 	if node.first.i == -1 || node.second.i == -1 {
 		return false
@@ -241,25 +213,4 @@ func (node Node) isVertical() bool {
 		return true
 	}
 	return false
-}
-
-func getTestLines() (taskLines []string) {
-	test := "-L|F7\n7S-7|\nL|7||\n-L-J|\nL|-JF"
-	return strings.Split(test, "\n")
-}
-func getTestLines2() (taskLines []string) {
-	test := "7-F7-\n.FJ|7\nSJLL7\n|F--J\nLJ.LJ"
-	return strings.Split(test, "\n")
-}
-func getTestLines3() (taskLines []string) {
-	test := "...........\n.S-------7.\n.|F-----7|.\n.||.....||.\n.||.....||.\n.|L-7.F-J|.\n.|..|.|..|.\n.L--J.L--J.\n..........."
-	return strings.Split(test, "\n")
-}
-func getTestLines4() (taskLines []string) {
-	test := "..........\n.S------7.\n.|F----7|.\n.||....||.\n.||....||.\n.|L-7F-J|.\n.|..||..|.\n.L--JL--J.\n.........."
-	return strings.Split(test, "\n")
-}
-func getTestLines5() (taskLines []string) {
-	test := "FF7FSF7F7F7F7F7F---7\nL|LJ||||||||||||F--J\nFL-7LJLJ||||||LJL-77\nF--JF--7||LJLJ7F7FJ-\nL---JF-JLJ.||-FJLJJ7\n|F|F-JF---7F7-L7L|7|\n|FFJF7L7F-JF7|JL---7\n7-L-JL7||F7|L7F-7F7|\nL.L7LFJ|||||FJL7||LJ\nL7JLJL-JLJLJL--JLJ.L"
-	return strings.Split(test, "\n")
 }
