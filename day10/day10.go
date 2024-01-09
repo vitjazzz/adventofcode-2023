@@ -1,6 +1,7 @@
 package day10
 
 import (
+	"adventofcode-2023/adventutils"
 	"fmt"
 	"math"
 	"strings"
@@ -9,8 +10,8 @@ import (
 var emptyPoint = Point{-1, -1}
 
 func Run() {
-	//taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/10/input")
-	taskLines := getTestLines3()
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/10/input")
+	//taskLines := getTestLines5()
 	strMatrix := getStringMatrix(taskLines)
 	grid := initializeGrid(strMatrix)
 	grid, groups := markLineGroups(grid)
@@ -35,14 +36,14 @@ func findNodesWithinLoop(grid [][]*Node, loopGroupId int) []*Node {
 				firstDirection := node.coordinate.i - node.first.i
 				secondDirection := node.coordinate.i - node.second.i
 				inDirection = firstDirection + secondDirection
-				if outDirection == 0 || outDirection == inDirection {
+				if outDirection == 0 || inDirection == 0 || outDirection == inDirection {
 					inside = true
 				}
 			} else if node.groupId == loopGroupId && inside && node.isVertical() {
 				firstDirection := node.coordinate.i - node.first.i
 				secondDirection := node.coordinate.i - node.second.i
 				outDirection = firstDirection + secondDirection
-				if inDirection == outDirection || inDirection == 0 {
+				if inDirection == outDirection || inDirection == 0 || outDirection == 0 {
 					inside = false
 				}
 			}
@@ -148,27 +149,27 @@ func initializeGrid(matrix [][]string) [][]*Node {
 		for j := 0; j < len(res[0]); j++ {
 			currentPoint := Point{i, j}
 			if i == 0 || j == 0 || i == originalLength+1 || j == originalWidth+1 {
-				res[i][j] = &Node{currentPoint, emptyPoint, emptyPoint, -1, false}
+				res[i][j] = &Node{"x", currentPoint, emptyPoint, emptyPoint, -1, false}
 				continue
 			}
 			pipeSymbol := matrix[i-1][j-1]
 			switch pipeSymbol {
 			case "S":
-				res[i][j] = &Node{currentPoint, emptyPoint, emptyPoint, -1, true}
+				res[i][j] = &Node{pipeSymbol, currentPoint, emptyPoint, emptyPoint, -1, true}
 			case ".":
-				res[i][j] = &Node{currentPoint, emptyPoint, emptyPoint, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, emptyPoint, emptyPoint, -1, false}
 			case "-":
-				res[i][j] = &Node{currentPoint, Point{i, j - 1}, Point{i, j + 1}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i, j - 1}, Point{i, j + 1}, -1, false}
 			case "|":
-				res[i][j] = &Node{currentPoint, Point{i - 1, j}, Point{i + 1, j}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i - 1, j}, Point{i + 1, j}, -1, false}
 			case "L":
-				res[i][j] = &Node{currentPoint, Point{i - 1, j}, Point{i, j + 1}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i - 1, j}, Point{i, j + 1}, -1, false}
 			case "J":
-				res[i][j] = &Node{currentPoint, Point{i - 1, j}, Point{i, j - 1}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i - 1, j}, Point{i, j - 1}, -1, false}
 			case "7":
-				res[i][j] = &Node{currentPoint, Point{i + 1, j}, Point{i, j - 1}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i + 1, j}, Point{i, j - 1}, -1, false}
 			case "F":
-				res[i][j] = &Node{currentPoint, Point{i + 1, j}, Point{i, j + 1}, -1, false}
+				res[i][j] = &Node{pipeSymbol, currentPoint, Point{i + 1, j}, Point{i, j + 1}, -1, false}
 			}
 		}
 	}
@@ -192,6 +193,7 @@ func getStringMatrix(lines []string) [][]string {
 }
 
 type Node struct {
+	symbol        string
 	coordinate    Point
 	first, second Point
 	groupId       int
@@ -251,5 +253,13 @@ func getTestLines2() (taskLines []string) {
 }
 func getTestLines3() (taskLines []string) {
 	test := "...........\n.S-------7.\n.|F-----7|.\n.||.....||.\n.||.....||.\n.|L-7.F-J|.\n.|..|.|..|.\n.L--J.L--J.\n..........."
+	return strings.Split(test, "\n")
+}
+func getTestLines4() (taskLines []string) {
+	test := "..........\n.S------7.\n.|F----7|.\n.||....||.\n.||....||.\n.|L-7F-J|.\n.|..||..|.\n.L--JL--J.\n.........."
+	return strings.Split(test, "\n")
+}
+func getTestLines5() (taskLines []string) {
+	test := "FF7FSF7F7F7F7F7F---7\nL|LJ||||||||||||F--J\nFL-7LJLJ||||||LJL-77\nF--JF--7||LJLJ7F7FJ-\nL---JF-JLJ.||-FJLJJ7\n|F|F-JF---7F7-L7L|7|\n|FFJF7L7F-JF7|JL---7\n7-L-JL7||F7|L7F-7F7|\nL.L7LFJ|||||FJL7||LJ\nL7JLJL-JLJLJL--JLJ.L"
 	return strings.Split(test, "\n")
 }
