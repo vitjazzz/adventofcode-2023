@@ -9,24 +9,30 @@ import (
 )
 
 var emptyRecord = Record{[]string{}, []int{}}
-var storedArrangements = make(map[string]int)
 
 func Run() {
 	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/12/input")
 	//taskLines := getTestLines()
 	res := 0
+	c := make(chan int)
 	for _, line := range taskLines {
-		storedArrangements = make(map[string]int)
-		record := getRecord(line)
-		record = unfold(record)
-		arrangements := getPossibleArrangementsCount(record)
-		fmt.Printf("line = %s, arrangements = %d\n", line, arrangements)
-		res += arrangements
+		go func(l string) {
+			record := getRecord(l)
+			record = unfold(record)
+			storedArrangements := make(map[string]int)
+			arrangements := getPossibleArrangementsCount(record, storedArrangements)
+			fmt.Printf("line = %s, arrangements = %d\n", l, arrangements)
+			c <- arrangements
+		}(line)
+		//res += arrangements
+	}
+	for i := 0; i < len(taskLines); i++ {
+		res += <-c
 	}
 	fmt.Printf("res = %d\n", res)
 }
 
-func getPossibleArrangementsCount(record Record) int {
+func getPossibleArrangementsCount(record Record, storedArrangements map[string]int) int {
 	arrangementKey := buildKey(record)
 	if res, ok := storedArrangements[arrangementKey]; ok {
 		return res
@@ -45,7 +51,7 @@ func getPossibleArrangementsCount(record Record) int {
 		}
 		newRecord, ok := tryRestoreGroup(record, i)
 		if ok {
-			res += getPossibleArrangementsCount(newRecord)
+			res += getPossibleArrangementsCount(newRecord, storedArrangements)
 		}
 		if record.symbols[i] == "#" {
 			break
