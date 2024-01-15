@@ -11,7 +11,7 @@ const (
 	VERTICAL MirrorType = iota
 	HORIZONTAL
 )
-const EXPECTED_SMUDGES = 0
+const EXPECTED_SMUDGES = 1
 
 func Run() {
 	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/13/input", false)
@@ -41,35 +41,38 @@ func calculateMirror(pattern Pattern) (MirrorType, int) {
 }
 
 func calculateMirrorPosition(symbols [][]string) int {
-	possibleMirrorsPerRow := make(map[int][]int)
+	possibleMirrorsPerRow := make(map[int][]Mirror)
 	for i := 0; i < len(symbols); i++ {
 		var possibleMirrors []Mirror
 		for j := 0; j < len(symbols[i]); j++ {
 			var newPossibleMirrors []Mirror
 			for _, possibleMirror := range possibleMirrors {
 				mirroredPosition := len(possibleMirror.leftSymbols) - (j - possibleMirror.position) - 1
-
 				if mirroredPosition < 0 || possibleMirror.leftSymbols[mirroredPosition] == symbols[i][j] {
-					newPossibleMirrors = append(newPossibleMirrors, possibleMirror)
+				} else {
+					possibleMirror.smudges += 1
 				}
+				newPossibleMirrors = append(newPossibleMirrors, possibleMirror)
 			}
 			possibleMirrors = newPossibleMirrors
 			if j != len(symbols[i])-1 {
-				possibleMirrors = append(possibleMirrors, Mirror{j + 1, symbols[i][:j+1]})
+				possibleMirrors = append(possibleMirrors, Mirror{j + 1, 0, symbols[i][:j+1]})
 			}
 		}
-		var possibleMirrorsPositions []int
-		for _, possibleMirror := range possibleMirrors {
-			possibleMirrorsPositions = append(possibleMirrorsPositions, possibleMirror.position)
-		}
-		possibleMirrorsPerRow[i] = possibleMirrorsPositions
+		possibleMirrorsPerRow[i] = possibleMirrors
 	}
+	return findCommonMirrorPositions(possibleMirrorsPerRow)
+}
+
+func findCommonMirrorPositions(possibleMirrorsPerRow map[int][]Mirror) int {
 	var mirrors []int
-	for i := 0; i < len(symbols); i++ {
-		possibleMirrors := possibleMirrorsPerRow[i]
-		if i == 0 {
-			mirrors = possibleMirrors
-		} else {
+	for i := 0; i < len(possibleMirrorsPerRow); i++ {
+		mirrors = getMirrorPositions(possibleMirrorsPerRow[i], EXPECTED_SMUDGES)
+		for j := 0; j < len(possibleMirrorsPerRow); j++ {
+			if i == j {
+				continue
+			}
+			possibleMirrors := getMirrorPositions(possibleMirrorsPerRow[j], 0)
 			var newMirrors []int
 			for _, mirror := range mirrors {
 				if slices.Contains(possibleMirrors, mirror) {
@@ -78,6 +81,9 @@ func calculateMirrorPosition(symbols [][]string) int {
 			}
 			mirrors = newMirrors
 		}
+		if len(mirrors) >= 1 {
+			return mirrors[0]
+		}
 	}
 	if len(mirrors) > 1 {
 		fmt.Printf("Unexpected mirrors - %v", mirrors)
@@ -85,6 +91,16 @@ func calculateMirrorPosition(symbols [][]string) int {
 		return 0
 	}
 	return mirrors[0]
+}
+
+func getMirrorPositions(mirrors []Mirror, smudges int) []int {
+	var res []int
+	for _, mirror := range mirrors {
+		if mirror.smudges == smudges {
+			res = append(res, mirror.position)
+		}
+	}
+	return res
 }
 
 func invertSymbols(symbols [][]string) [][]string {
@@ -122,8 +138,8 @@ type Pattern struct {
 }
 
 type Mirror struct {
-	position    int
-	leftSymbols []string
+	position, smudges int
+	leftSymbols       []string
 }
 
 type MirrorType int
