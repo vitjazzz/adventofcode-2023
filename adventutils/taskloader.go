@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func GetFromUrl(url string) (taskLines []string) {
+func GetFromUrl(url string, filterEmpty bool) (taskLines []string) {
 	cookie := ""
 
 	request, _ := http.NewRequest("GET", url, nil)
@@ -24,7 +24,17 @@ func GetFromUrl(url string) (taskLines []string) {
 	body, err := io.ReadAll(resp.Body)
 
 	task := string(body)
-	return strings.Split(task, "\n")
+	lines := strings.Split(task, "\n")
+	if !filterEmpty {
+		return lines
+	}
+	var filteredLines []string
+	for _, line := range lines {
+		if line != "" {
+			filteredLines = append(filteredLines, line)
+		}
+	}
+	return filteredLines
 }
 
 func getFromFile(fn string) (taskLines []string) {

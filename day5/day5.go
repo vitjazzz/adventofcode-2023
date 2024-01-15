@@ -11,7 +11,7 @@ const seedsKey = "seeds: "
 const mapKey = " map:"
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/5/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/5/input", true)
 	//taskLines := getTestLines()
 	seedsRanges := getSeedsAdvanced(taskLines)
 	maxSeed := findMaxSeed(seedsRanges)

@@ -13,7 +13,7 @@ import (
 var cardNominations = map[string]int{"A": 12, "K": 11, "Q": 10, "T": 9, "9": 8, "8": 7, "7": 6, "6": 5, "5": 4, "4": 3, "3": 2, "2": 1, "J": 0}
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/7/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/7/input", true)
 	//taskLines := getTestLines()
 	hands := getHands(taskLines)
 	sortedHands := hands[:]

@@ -11,7 +11,7 @@ import (
 const multiplier = 1000000
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/11/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/11/input", true)
 	//taskLines := getTestLines()
 	universe := getUniverse(taskLines)
 	expandedLines := getExpandedLines(universe)

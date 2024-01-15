@@ -8,7 +8,7 @@ import (
 )
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/8/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/8/input", true)
 	//taskLines := getTestLines3()
 	navigationRules, nodesRepresentations := getRules(taskLines)
 	tree := buildTree(nodesRepresentations)

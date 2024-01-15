@@ -9,7 +9,7 @@ import (
 )
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/3/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/3/input", true)
 	//taskLines := getTestLines()
 	taskArray := toArray(taskLines)
 	totalSum := calculateGearsSum(taskArray)

@@ -10,7 +10,7 @@ import (
 // 42364 is too high
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/4/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/4/input", true)
 	//taskLines := getTestLines()
 	matchedNumbersMap, maxCardId := buildMatchedNumbersMap(taskLines)
 	fmt.Printf("matchedNumbersMap - %v, maxCardId - %d\n", matchedNumbersMap, maxCardId)

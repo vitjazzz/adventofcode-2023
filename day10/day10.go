@@ -10,7 +10,7 @@ import (
 var emptyPoint = Point{-1, -1}
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/10/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/10/input", true)
 	//taskLines := getTestLines5()
 	strMatrix := getStringMatrix(taskLines)
 	grid := initializeGrid(strMatrix)

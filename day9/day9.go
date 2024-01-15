@@ -7,7 +7,7 @@ import (
 )
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/9/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/9/input", true)
 	//taskLines := getTestLines2()
 	res := 0
 	for _, line := range taskLines {

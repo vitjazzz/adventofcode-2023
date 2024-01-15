@@ -11,7 +11,7 @@ import (
 var emptyRecord = Record{[]string{}, []int{}}
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/12/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/12/input", true)
 	//taskLines := getTestLines()
 	res := 0
 	c := make(chan int)

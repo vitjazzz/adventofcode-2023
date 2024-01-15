@@ -11,7 +11,7 @@ const timeKey = "Time:"
 const distanceKey = "Distance:"
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/6/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/6/input", true)
 	//taskLines := getTestLines()
 	games := getGamesAdvanced(taskLines)
 	res := 1

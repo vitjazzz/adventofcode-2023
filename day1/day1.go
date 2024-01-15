@@ -11,7 +11,7 @@ import (
 var digitMappings = map[string]int{"one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6, "seven": 7, "eight": 8, "nine": 9}
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/1/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/1/input", true)
 	//taskLines := getTestLinesAdvanced()
 	var desiredSum int
 	for _, line := range taskLines {

@@ -13,7 +13,7 @@ var cubesCount = map[string]int{"red": 12, "green": 13, "blue": 14}
 // 3003 is too high
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/2/input")
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/2/input", true)
 	//taskLines := getTestLines()
 	var desiredSum int
 	for _, line := range taskLines {
