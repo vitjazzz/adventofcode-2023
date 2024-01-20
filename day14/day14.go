@@ -1,37 +1,64 @@
 package day14
 
 import (
+	"adventofcode-2023/adventutils"
 	"fmt"
+	"hash/fnv"
 	"strings"
 )
 
-const CYCLES = 100
+const CYCLES = 1000000000
 
 func Run() {
-	//taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/14/input", true)
-	taskLines := getTestLines()
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/14/input", true)
+	//taskLines := getTestLines()
 	board := getBoard(taskLines)
+	boardByCycleMap := make(map[uint64]int)
+
+	cycleStart := -1
+	cycleEnd := -1
 	for k := 0; k < CYCLES; k++ {
+		boardStr := toString(board)
+		boardHash := hash(boardStr)
+		if cycle, ok := boardByCycleMap[boardHash]; ok {
+			fmt.Printf("Current cycle - %d, last same cycle - %d:\n", k, cycle)
+			cycleStart = cycle
+			cycleEnd = k
+			break
+		} else {
+			boardByCycleMap[boardHash] = k
+		}
+
 		for m := 0; m < 4; m++ {
 			tiltNorth(board)
 			board = rotateClockwise(board)
 		}
-		res := calculateNorth(board)
-		fmt.Printf("After %d cycle, res - %d:\n", k+1, res)
-		printBoard(board)
+
+	}
+	cyclesLeft := (CYCLES - cycleStart) % (cycleEnd - cycleStart)
+	for k := 0; k < cyclesLeft; k++ {
+		for m := 0; m < 4; m++ {
+			tiltNorth(board)
+			board = rotateClockwise(board)
+		}
 	}
 	res := calculateNorth(board)
 	fmt.Printf("res = %d\n", res)
 }
 
-func printBoard(board [][]string) {
+func toString(board [][]string) string {
+	res := ""
 	for i := 0; i < len(board); i++ {
-		for j := 0; j < len(board[i]); j++ {
-			fmt.Print(board[i][j])
-		}
-		fmt.Println()
+		line := strings.Join(board[i], "")
+		res += line
 	}
-	fmt.Println()
+	return res
+}
+
+func hash(str string) uint64 {
+	h := fnv.New64a()
+	h.Write([]byte(str))
+	return h.Sum64()
 }
 
 func tiltNorth(board [][]string) {
