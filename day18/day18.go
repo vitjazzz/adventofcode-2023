@@ -9,17 +9,23 @@ import (
 	"strings"
 )
 
+var horizontalLinesMap = make(map[int][]*line)
+
 // 177243739418883 is too low
 func Run() {
 	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/18/input", true)
-	//taskLines := getTestLines()
 	commands := getCommands(taskLines)
 	digLines := buildLines(commands)
 	linesLinks := rebuildLines(digLines)
 	res := calculateSurface(linesLinks)
-	//printBoard(board)
 
 	fmt.Printf("res = %d\n", res)
+}
+
+func printLines(lines []*line) {
+	for _, l := range lines {
+		fmt.Printf("l.dir.i = %d, l.dir.j = %d\n", l.dir.i, l.dir.j)
+	}
 }
 
 func calculateSurface(lines []*line) int {
@@ -45,7 +51,7 @@ func calculateSurface(lines []*line) int {
 			prevVerticalLine := verticalLines[k-1]
 			prevLineDirection := getLineDirection(i, prevVerticalLine)
 			currentLineDirection := getLineDirection(i, currentVerticalLine)
-			if inside && (currentLineDirection == 0 || prevLineDirection == 0) {
+			if inside && (currentLineDirection == 0 || prevLineDirection == 0 || !hasLineBetween(i, prevVerticalLine.c.j, currentVerticalLine.c.j)) {
 				res += currentVerticalLine.c.j - prevVerticalLine.c.j - 1
 			}
 			if !inside {
@@ -84,55 +90,7 @@ func orderedVerticalLines(i int, lines []*line) []*line {
 	return possibleVerticalLines
 }
 
-func nextVerticalLine(i, j int, lines []*line) *line {
-	var possibleVerticalLines []*line
-	for _, l := range lines {
-		if l.dir.i == 0 {
-			continue
-		}
-		if l.c.j < j {
-			continue
-		}
-		if l.dir.i > 0 {
-			if i >= l.c.i && i <= l.c.i+l.dir.i {
-				possibleVerticalLines = append(possibleVerticalLines, l)
-			}
-		} else if l.dir.i < 0 {
-			if i <= l.c.i && i >= l.c.i+l.dir.i {
-				possibleVerticalLines = append(possibleVerticalLines, l)
-			}
-		}
-	}
-	if len(possibleVerticalLines) == 0 {
-		return nil
-	}
-	res := possibleVerticalLines[0]
-	for _, vertLine := range possibleVerticalLines {
-		if vertLine.c.j < res.c.j {
-			res = vertLine
-		}
-	}
-	return res
-}
-
-func onLine(i, j int, l line) bool {
-	if l.dir.i == 0 && i != l.c.i ||
-		l.dir.j == 0 && j != l.c.j {
-		return false
-	}
-	if l.dir.i > 0 {
-		return i >= l.c.i && i < l.c.i+l.dir.i
-	} else if l.dir.i < 0 {
-		return i <= l.c.i && i > l.c.i+l.dir.i
-	} else if l.dir.j > 0 {
-		return j >= l.c.j && j < l.c.j+l.dir.j
-	} else if l.dir.j < 0 {
-		return j <= l.c.j && j > l.c.j+l.dir.j
-	}
-	return false
-}
-
-func buildBoard(lines []line) [][]string {
+func buildBoard(lines []*line) [][]string {
 	minI, maxI, minJ, maxJ := math.MaxInt, math.MinInt, math.MaxInt, math.MinInt
 	for _, l := range lines {
 		minI = adventutils.Min(minI, l.c.i)
@@ -164,7 +122,7 @@ func buildBoard(lines []line) [][]string {
 	return res
 }
 
-func rebuildLines(lines []line) []*line {
+func rebuildLines(lines []*line) []*line {
 	minI, minJ := math.MaxInt, math.MaxInt
 	for _, l := range lines {
 		minI = adventutils.Min(minI, l.c.i)
@@ -176,6 +134,11 @@ func rebuildLines(lines []line) []*line {
 	for _, l := range lines {
 		newCoordinate := coordinate{l.c.i - minI, l.c.j - minJ}
 		res = append(res, &line{newCoordinate, l.dir, l.colour})
+	}
+	for _, l := range res {
+		if l.dir.j != 0 {
+			horizontalLinesMap[l.c.i] = append(horizontalLinesMap[l.c.i], l)
+		}
 	}
 	return res
 }
@@ -200,8 +163,8 @@ func getIncrements(dir coordinate) (iInc, jInc int) {
 	}
 }
 
-func buildLines(commands []cmd) []line {
-	var res []line
+func buildLines(commands []cmd) []*line {
+	var res []*line
 	i := 0
 	j := 0
 	for _, cmd := range commands {
@@ -217,7 +180,31 @@ func buildLines(commands []cmd) []line {
 		case "D":
 			dir = coordinate{cmd.length, 0}
 		}
-		res = append(res, line{c, dir, cmd.colour})
+		res = append(res, &line{c, dir, cmd.colour})
+		i += dir.i
+		j += dir.j
+	}
+	return res
+}
+
+func buildLinesDebug(commands []cmd) []*line {
+	var res []*line
+	i := 0
+	j := 0
+	for _, cmd := range commands {
+		c := coordinate{i, j}
+		var dir coordinate
+		switch cmd.dir {
+		case "R":
+			dir = coordinate{0, cmd.length/70_000 + 2}
+		case "L":
+			dir = coordinate{0, -cmd.length/70_000 - 2}
+		case "U":
+			dir = coordinate{-cmd.length/70_000 - 2, 0}
+		case "D":
+			dir = coordinate{cmd.length/70_000 + 2, 0}
+		}
+		res = append(res, &line{c, dir, cmd.colour})
 		i += dir.i
 		j += dir.j
 	}
@@ -277,6 +264,19 @@ func getLineDirection(i int, l *line) int {
 	} else {
 		return 0
 	}
+}
+
+func hasLineBetween(i, j1, j2 int) bool {
+	horizontalLines := horizontalLinesMap[i]
+	jBetween := (j1 + j2) / 2
+	for _, l := range horizontalLines {
+		minJ := adventutils.Min(l.c.j, l.c.j+l.dir.j)
+		maxJ := adventutils.Max(l.c.j, l.c.j+l.dir.j)
+		if jBetween >= minJ && jBetween <= maxJ {
+			return true
+		}
+	}
+	return false
 }
 
 type cmd struct {
