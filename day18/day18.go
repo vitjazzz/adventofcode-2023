@@ -4,51 +4,138 @@ import (
 	"adventofcode-2023/adventutils"
 	"fmt"
 	"math"
-	"strconv"
+	"math/big"
+	"sort"
 	"strings"
 )
 
 func Run() {
-	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/18/input", true)
-	//taskLines := getTestLines()
+	//taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/18/input", true)
+	taskLines := getTestLines()
 	commands := getCommands(taskLines)
 	digLines := buildLines(commands)
-	board := buildBoard(digLines)
-	res := calculateSurface(board)
+	linesLinks := rebuildLines(digLines)
+	//linesLinks[len(linesLinks)-1].dir = coordinate{linesLinks[len(linesLinks)-1].dir.i - 1, linesLinks[len(linesLinks)-1].dir.j}
+	res := calculateSurface(linesLinks)
 	//printBoard(board)
 
 	fmt.Printf("res = %d\n", res)
 }
 
-func calculateSurface(board [][]string) int {
+func calculateSurface(lines []*line) int {
+	maxI := math.MinInt
+	for _, l := range lines {
+		maxI = adventutils.Max(maxI, l.c.i)
+		maxI = adventutils.Max(maxI, l.c.i+l.dir.i)
+	}
 	res := 0
-	for i := 0; i < len(board); i++ {
-		inside := false
-		inDirection := 0
-		outDirection := 0
-		for j := 0; j < len(board[i]); j++ {
-			symbol := board[i][j]
-			if symbol == "#" {
-				res++
+	for _, l := range lines {
+		res += adventutils.Abs(l.dir.i + l.dir.j)
+	}
+	for i := 0; i < maxI; i++ {
+		if i%1_000_000 == 0 {
+			fmt.Printf("Current - %d, all - %d", i, maxI)
+		}
+		j := 0
+		prevVerticalLine := nextVerticalLine(i, j, lines)
+		if prevVerticalLine == nil {
+			continue
+		}
+		j = prevVerticalLine.c.j + 1
+		currentVerticalLine := nextVerticalLine(i, j, lines)
+		inside := true
+		for currentVerticalLine != nil {
+			prevLineDirection := getLineDirection(i, prevVerticalLine)
+			currentLineDirection := getLineDirection(i, currentVerticalLine)
+			if inside && (currentLineDirection == 0 || prevLineDirection == 0) {
+				res += currentVerticalLine.c.j - prevVerticalLine.c.j - 1
 			}
-			if symbol == "." && inside {
-				res++
-			}
-			c := coordinate{i, j}
-			if symbol == "#" && !inside && isVertical(c, board) {
-				inDirection = getLineDirection(c, board)
-				if outDirection == 0 || inDirection == 0 || outDirection == inDirection {
+			if !inside {
+				if currentLineDirection == 0 || prevLineDirection == 0 || prevLineDirection == currentLineDirection {
 					inside = true
 				}
-			} else if symbol == "#" && inside && isVertical(c, board) {
-				outDirection = getLineDirection(c, board)
-				if inDirection == outDirection || inDirection == 0 || outDirection == 0 {
+			} else if inside {
+				if currentLineDirection == 0 || prevLineDirection == 0 || prevLineDirection == currentLineDirection {
 					inside = false
 				}
 			}
+
+			prevVerticalLine = currentVerticalLine
+			j = currentVerticalLine.c.j + 1
+			currentVerticalLine = nextVerticalLine(i, j, lines)
 		}
 	}
 	return res
+}
+
+func orderedVerticalLines(i int, lines []*line) []*line {
+	var possibleVerticalLines []*line
+	for _, l := range lines {
+		if l.dir.i == 0 {
+			continue
+		}
+		if l.dir.i > 0 {
+			if i >= l.c.i && i <= l.c.i+l.dir.i {
+				possibleVerticalLines = append(possibleVerticalLines, l)
+			}
+		} else if l.dir.i < 0 {
+			if i <= l.c.i && i >= l.c.i+l.dir.i {
+				possibleVerticalLines = append(possibleVerticalLines, l)
+			}
+		}
+	}
+	sort.Slice(possibleVerticalLines, func(i, j int) bool {
+		return possibleVerticalLines[i].c.j < possibleVerticalLines[j].c.j
+	})
+	return possibleVerticalLines
+}
+
+func nextVerticalLine(i, j int, lines []*line) *line {
+	var possibleVerticalLines []*line
+	for _, l := range lines {
+		if l.dir.i == 0 {
+			continue
+		}
+		if l.c.j < j {
+			continue
+		}
+		if l.dir.i > 0 {
+			if i >= l.c.i && i <= l.c.i+l.dir.i {
+				possibleVerticalLines = append(possibleVerticalLines, l)
+			}
+		} else if l.dir.i < 0 {
+			if i <= l.c.i && i >= l.c.i+l.dir.i {
+				possibleVerticalLines = append(possibleVerticalLines, l)
+			}
+		}
+	}
+	if len(possibleVerticalLines) == 0 {
+		return nil
+	}
+	res := possibleVerticalLines[0]
+	for _, vertLine := range possibleVerticalLines {
+		if vertLine.c.j < res.c.j {
+			res = vertLine
+		}
+	}
+	return res
+}
+
+func onLine(i, j int, l line) bool {
+	if l.dir.i == 0 && i != l.c.i ||
+		l.dir.j == 0 && j != l.c.j {
+		return false
+	}
+	if l.dir.i > 0 {
+		return i >= l.c.i && i < l.c.i+l.dir.i
+	} else if l.dir.i < 0 {
+		return i <= l.c.i && i > l.c.i+l.dir.i
+	} else if l.dir.j > 0 {
+		return j >= l.c.j && j < l.c.j+l.dir.j
+	} else if l.dir.j < 0 {
+		return j <= l.c.j && j > l.c.j+l.dir.j
+	}
+	return false
 }
 
 func buildBoard(lines []line) [][]string {
@@ -79,6 +166,22 @@ func buildBoard(lines []line) [][]string {
 		for i, j := iStart, jStart; isLineEnded(i, j, iStart, jStart, l.dir); i, j = i+iInc, j+jInc {
 			res[i][j] = "#"
 		}
+	}
+	return res
+}
+
+func rebuildLines(lines []line) []*line {
+	minI, minJ := math.MaxInt, math.MaxInt
+	for _, l := range lines {
+		minI = adventutils.Min(minI, l.c.i)
+		minI = adventutils.Min(minI, l.c.i+l.dir.i)
+		minJ = adventutils.Min(minJ, l.c.j)
+		minJ = adventutils.Min(minJ, l.c.j+l.dir.j)
+	}
+	var res []*line
+	for _, l := range lines {
+		newCoordinate := coordinate{l.c.i - minI, l.c.j - minJ}
+		res = append(res, &line{newCoordinate, l.dir, l.colour})
 	}
 	return res
 }
@@ -131,12 +234,32 @@ func getCommands(lines []string) []cmd {
 	res := make([]cmd, len(lines))
 	for i, line := range lines {
 		lineParts := strings.Split(line, " ")
-		dir := lineParts[0]
-		length, _ := strconv.Atoi(lineParts[1])
 		colour := lineParts[2][1 : len(lineParts[2])-1]
-		res[i] = cmd{dir, length, colour}
+		dir := getDir(string(colour[len(colour)-1]))
+		length := getLength(colour[1 : len(colour)-1])
+		res[i] = cmd{dir, length, ""}
 	}
 	return res
+}
+
+func getDir(dirCoded string) string {
+	switch dirCoded {
+	case "0":
+		return "R"
+	case "1":
+		return "D"
+	case "2":
+		return "L"
+	case "3":
+		return "U"
+	}
+	return "UNKNOWN"
+}
+
+func getLength(lengthCoded string) int {
+	n := new(big.Int)
+	n.SetString(lengthCoded, 16)
+	return int(n.Int64())
 }
 
 func printBoard(board [][]string) {
@@ -150,25 +273,13 @@ func printBoard(board [][]string) {
 	fmt.Println()
 }
 
-func isVertical(c coordinate, board [][]string) bool {
-	return board[c.i][c.j] == "#" && (board[c.i-1][c.j] == "#" || board[c.i+1][c.j] == "#")
-}
-func topDirection(c coordinate, board [][]string) int {
-	if board[c.i-1][c.j] == "#" {
+func getLineDirection(i int, l *line) int {
+	minI := adventutils.Min(l.c.i, l.c.i+l.dir.i)
+	maxI := adventutils.Max(l.c.i, l.c.i+l.dir.i)
+	if i == minI {
 		return -1
-	} else if board[c.i+1][c.j] == "#" {
+	} else if i == maxI {
 		return 1
-	} else {
-		return 0
-	}
-}
-func getLineDirection(c coordinate, board [][]string) int {
-	if board[c.i-1][c.j] == "#" && board[c.i+1][c.j] == "#" {
-		return 0
-	} else if board[c.i+1][c.j] == "#" {
-		return 1
-	} else if board[c.i-1][c.j] == "#" {
-		return -1
 	} else {
 		return 0
 	}
