@@ -7,33 +7,54 @@ import (
 	"strings"
 )
 
-//var workflows = make(map[string]workflow)
+var workflows = make(map[string]workflow)
+
+const MAX_RANGE = 4000
 
 func Run() {
 	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/19/input", true)
 	//taskLines := getTestLines()
-	parts := getParts(taskLines)
-	workflows := getWorkflows(taskLines)
-	var acceptedParts []part
-	for _, p := range parts {
-		workflowId := "in"
-		for {
-			currentWorkflow := workflows[workflowId]
-			workflowId = currentWorkflow.process(p)
-			if workflowId == "A" || workflowId == "R" {
-				break
-			}
-		}
-		if workflowId == "A" {
-			acceptedParts = append(acceptedParts, p)
-		}
-	}
-	res := 0
-	for _, p := range acceptedParts {
-		res += p.x + p.m + p.a + p.s
-	}
+	//parts := getParts(taskLines)
+	workflows = getWorkflows(taskLines)
+	initialRange := valRange{1, MAX_RANGE}
+	initialGroup := partsGroup{map[string]valRange{"x": initialRange, "m": initialRange, "a": initialRange, "s": initialRange}}
+	variants := calculateVariants(initialGroup, "in")
+	fmt.Printf("res = %d\n", variants)
+}
 
-	fmt.Printf("res = %d\n", res)
+//167409079868000
+//140809783868000
+
+func calculateVariants(group partsGroup, workflowId string) int64 {
+	wf := workflows[workflowId]
+	res := int64(0)
+	for _, p := range wf.processGroup(group) {
+		key := p.workflowId
+		val := p.group
+		if key == "A" {
+			res += getVariants(val)
+			//printGroup(val, workflowId, getVariants(val))
+		} else if key == "R" {
+			continue
+		} else {
+			res += calculateVariants(val, key)
+		}
+	}
+	return res
+}
+
+func printGroup(group partsGroup, wfId string, variants int64) {
+	fmt.Printf("x: [%d, %d], m: [%d, %d], a: [%d, %d], s: [%d, %d], wfId - %s, variants - %d\n",
+		group.attrs["x"].from, group.attrs["x"].to, group.attrs["m"].from, group.attrs["m"].to, group.attrs["a"].from, group.attrs["a"].to,
+		group.attrs["s"].from, group.attrs["s"].to, wfId, variants)
+}
+
+func getVariants(group partsGroup) int64 {
+	res := int64(1)
+	for _, vr := range group.attrs {
+		res *= int64((vr.to - vr.from) + 1)
+	}
+	return res
 }
 
 func getParts(lines []string) []part {
@@ -113,9 +134,78 @@ func (w workflow) process(p part) string {
 	return "UNKNOWN"
 }
 
+func (w workflow) processGroup(pg partsGroup) []pair {
+	currentGroup := pg
+	var res []pair
+	for i, r := range w.rules {
+		if i == len(w.rules)-1 {
+			res = append(res, pair{r.resultWorkflowId, currentGroup})
+			break
+		}
+		switch r.operation {
+		case ">":
+			currentRange := currentGroup.attrs[r.attribute]
+			if currentRange.to <= r.value {
+				continue
+			} else if currentRange.from > r.value {
+				res = append(res, pair{r.resultWorkflowId, currentGroup})
+				break
+			} else {
+				newRanges := make(map[string]valRange, len(currentGroup.attrs))
+				for k, v := range currentGroup.attrs {
+					newRanges[k] = v
+				}
+				newRange := valRange{r.value + 1, currentRange.to}
+				newRanges[r.attribute] = newRange
+				newGroup := partsGroup{newRanges}
+				res = append(res, pair{r.resultWorkflowId, newGroup})
+				currentRange = valRange{currentRange.from, r.value}
+				currentRanges := currentGroup.attrs
+				currentRanges[r.attribute] = currentRange
+				currentGroup = partsGroup{currentRanges}
+			}
+		case "<":
+			currentRange := currentGroup.attrs[r.attribute]
+			if currentRange.from >= r.value {
+				continue
+			} else if currentRange.to < r.value {
+				res = append(res, pair{r.resultWorkflowId, currentGroup})
+				break
+			} else {
+				newRanges := make(map[string]valRange, len(currentGroup.attrs))
+				for k, v := range currentGroup.attrs {
+					newRanges[k] = v
+				}
+				newRange := valRange{currentRange.from, r.value - 1}
+				newRanges[r.attribute] = newRange
+				newGroup := partsGroup{newRanges}
+				res = append(res, pair{r.resultWorkflowId, newGroup})
+				currentRange = valRange{r.value, currentRange.to}
+				currentRanges := currentGroup.attrs
+				currentRanges[r.attribute] = currentRange
+				currentGroup = partsGroup{currentRanges}
+			}
+		}
+	}
+	return res
+}
+
 type part struct {
 	attributes map[string]int
 	x, m, a, s int
+}
+
+type partsGroup struct {
+	attrs map[string]valRange
+}
+
+type valRange struct {
+	from, to int
+}
+
+type pair struct {
+	workflowId string
+	group      partsGroup
 }
 
 func getTestLines() (taskLines []string) {
