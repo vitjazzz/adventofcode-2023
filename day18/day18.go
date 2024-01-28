@@ -9,13 +9,13 @@ import (
 	"strings"
 )
 
+// 177243739418883 is too low
 func Run() {
-	//taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/18/input", true)
-	taskLines := getTestLines()
+	taskLines := adventutils.GetFromUrl("https://adventofcode.com/2023/day/18/input", true)
+	//taskLines := getTestLines()
 	commands := getCommands(taskLines)
 	digLines := buildLines(commands)
 	linesLinks := rebuildLines(digLines)
-	//linesLinks[len(linesLinks)-1].dir = coordinate{linesLinks[len(linesLinks)-1].dir.i - 1, linesLinks[len(linesLinks)-1].dir.j}
 	res := calculateSurface(linesLinks)
 	//printBoard(board)
 
@@ -34,17 +34,15 @@ func calculateSurface(lines []*line) int {
 	}
 	for i := 0; i < maxI; i++ {
 		if i%1_000_000 == 0 {
-			fmt.Printf("Current - %d, all - %d", i, maxI)
+			fmt.Printf("Current - %d, all - %d\n", i, maxI)
 		}
-		j := 0
-		prevVerticalLine := nextVerticalLine(i, j, lines)
-		if prevVerticalLine == nil {
-			continue
-		}
-		j = prevVerticalLine.c.j + 1
-		currentVerticalLine := nextVerticalLine(i, j, lines)
+		verticalLines := orderedVerticalLines(i, lines)
 		inside := true
-		for currentVerticalLine != nil {
+		for k, currentVerticalLine := range verticalLines {
+			if k == 0 {
+				continue
+			}
+			prevVerticalLine := verticalLines[k-1]
 			prevLineDirection := getLineDirection(i, prevVerticalLine)
 			currentLineDirection := getLineDirection(i, currentVerticalLine)
 			if inside && (currentLineDirection == 0 || prevLineDirection == 0) {
@@ -59,10 +57,6 @@ func calculateSurface(lines []*line) int {
 					inside = false
 				}
 			}
-
-			prevVerticalLine = currentVerticalLine
-			j = currentVerticalLine.c.j + 1
-			currentVerticalLine = nextVerticalLine(i, j, lines)
 		}
 	}
 	return res
